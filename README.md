@@ -1,2 +1,2 @@
-# light-matter-interaction
-FDTD based electromagnetic simulations
+# FDTD based electromagnetic simulations
+
