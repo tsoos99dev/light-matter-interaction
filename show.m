@@ -1,8 +1,19 @@
-data = readmatrix("sim.csv");
+data = readmatrix("out/sim.csv");
 
+Fs = 1;
+L = size(data, 1);
 xm = size(data, 2);
 xk = 0:xm-1;
 
+A1 = max(data(:, 100));
+A2 = max(data(:, 120));
+A2 / A1
+
+% figure;
+% f = Fs/L*(0:(L/2));
+% plot(f,P1,"LineWidth",3) 
+
+figure;
 aspect = [16 9];
 f = gcf;
 f.Position(3:4) = aspect / aspect(1) * 1200;
@@ -23,7 +34,7 @@ hold on;
 xline(100, 'LineWidth', 2);
 
 
-for k = 1:size(data, 1)
+for k = 1:L
     yk = data(k, :);
     clearpoints(a1);
     addpoints(a1, xk, yk);

@@ -1,10 +1,51 @@
 use std::{error::Error, f64::consts::PI};
 
-fn main() -> Result<(), Box<dyn Error>> {
+const IMP0: f64 = 377.0;
+
+use light_matter_interaction::fdtd;
+
+fn main() {
+    let mut probe_point = fdtd::probe::EPoint::new(120);
+
+    fdtd::FDTDSim::new(200, 450)
+        .add_source(fdtd::source::Harmonic::new(70.0, 50))
+        .add_probe(&mut probe_point)
+        .run();
+
+    let _ = export_snapshot("out/sim.csv", &probe_point.data);
+}
+
+fn export_snapshot<'a>(
+    path: &str,
+    data: impl IntoIterator<Item = &'a f64>,
+) -> Result<(), Box<dyn Error>> {
+    let mut wtr = csv::Writer::from_path(path)?;
+    wtr.write_record(data.into_iter().map(|e| format!("{:.3}", e)))?;
+
+    wtr.flush()?;
+
+    Ok(())
+}
+
+fn export_sim<'a, Row, Data>(path: &str, data: Data) -> Result<(), Box<dyn Error>>
+where
+    Row: IntoIterator<Item = &'a f64>,
+    Data: IntoIterator<Item = Row>,
+{
+    let mut wtr = csv::Writer::from_path(path)?;
+    for row in data.into_iter() {
+        wtr.write_record(row.into_iter().map(|e| format!("{:.3}", e)))?;
+    }
+
+    wtr.flush()?;
+
+    Ok(())
+}
+
+fn sim() -> Result<(), Box<dyn Error>> {
     const SIZE: usize = 200;
     const MAX_TIME: usize = 450;
 
-    const IMP0: f64 = 377.0;
     const LOSS: f64 = 0.0253146;
 
     const N_LAMBDA: f64 = 40.0;
