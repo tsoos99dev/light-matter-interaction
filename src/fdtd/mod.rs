@@ -43,28 +43,35 @@ impl<'a, S: state::State> FDTDSim<'a, S> {
         let mut grid = grid::Grid {
             ez: vec![0.0; self.xstep],
             hy: vec![0.0; self.xstep],
+            ceze: vec![1.0; self.xstep],
+            cezh: vec![IMP0; self.xstep],
+            chyh: vec![1.0; self.xstep - 1],
+            chye: vec![1.0 / IMP0; self.xstep - 1],
         };
 
-        let mut ceze = vec![1.0; self.xstep];
-        let mut cezh = vec![IMP0; self.xstep];
-        let mut chyh = vec![1.0; self.xstep - 1];
-        let mut chye = vec![1.0 / IMP0; self.xstep - 1];
+        for material in &self.materials {
+            material.create(&mut grid);
+        }
 
         for t in 0..self.tstep {
             for probe in &mut self.probes {
-                probe.measure(&grid);
+                probe.measure(&grid, t);
             }
 
             for i in 0..self.xstep - 1 {
-                grid.hy[i] = chyh[i] * grid.hy[i] + chye[i] * (grid.ez[i + 1] - grid.ez[i]);
+                grid.hy[i] =
+                    grid.chyh[i] * grid.hy[i] + grid.chye[i] * (grid.ez[i + 1] - grid.ez[i]);
             }
 
             for source in &self.sources {
                 source.evaluate(&mut grid, t as f64)
             }
 
+            grid.ez[0] = grid.ez[1];
+
             for i in 1..self.xstep - 1 {
-                grid.ez[i] = ceze[i] * grid.ez[i] + cezh[i] * (grid.hy[i] - grid.hy[i - 1]);
+                grid.ez[i] =
+                    grid.ceze[i] * grid.ez[i] + grid.cezh[i] * (grid.hy[i] - grid.hy[i - 1]);
             }
         }
 
@@ -86,6 +93,11 @@ impl<'a> FDTDSim<'a, state::Empty> {
 
     pub fn add_source(mut self, source: impl source::Source + 'a) -> Self {
         self.sources.push(Box::new(source));
+        self
+    }
+
+    pub fn add_material(mut self, material: impl material::Material + 'a) -> Self {
+        self.materials.push(Box::new(material));
         self
     }
 
