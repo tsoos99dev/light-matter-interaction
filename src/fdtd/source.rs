@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use super::grid::Grid;
+use super::{grid::Grid, IMP0};
 
 pub trait Source {
     fn evaluate(&self, grid: &mut Grid, t: f64);
@@ -24,9 +24,17 @@ impl Harmonic {
 
 impl Source for Harmonic {
     fn evaluate(&self, grid: &mut Grid, t: f64) {
+        let cezh = grid.cezh[self.location];
+        let chye = grid.chye[self.location];
+
+        let er = IMP0 / cezh;
+        let mr = 1.0 / (IMP0 * chye);
+        let n = f64::sqrt(er * mr);
+
         grid.hy[self.location - 1] +=
-            -self.amplitude * f64::sin(2.0 * PI / self.wavelength * t) / super::IMP0;
-        grid.ez[self.location] += self.amplitude * f64::sin(2.0 * PI / self.wavelength * (t + 1.0));
+            -self.amplitude * f64::sin(2.0 * PI / self.wavelength * t) / super::IMP0 / mr;
+        grid.ez[self.location] +=
+            self.amplitude * f64::sin(2.0 * PI / self.wavelength * (t + 0.5 * (1.0 + n))) / n;
     }
 }
 
@@ -48,12 +56,20 @@ impl Gaussian {
 
 impl Source for Gaussian {
     fn evaluate(&self, grid: &mut Grid, t: f64) {
+        let cezh = grid.cezh[self.location];
+        let chye = grid.chye[self.location];
+
+        let er = IMP0 / cezh;
+        let mr = 1.0 / (IMP0 * chye);
+        let n = f64::sqrt(er * mr);
+
         grid.hy[self.location - 1] += -self.amplitude
-            * f64::exp(-(t - 3.0 * self.width) * (t - 3.0 * self.width) / self.width.powi(2))
-            / super::IMP0;
+            * f64::exp(-(t - 3.0 * self.width).powi(2) / self.width.powi(2))
+            / IMP0
+            / mr;
+
         grid.ez[self.location] += self.amplitude
-            * f64::exp(
-                -(t + 1.0 - 3.0 * self.width) * (t + 1.0 - 3.0 * self.width) / self.width.powi(2),
-            );
+            * f64::exp(-(t + 0.5 * (1.0 + n) - 3.0 * self.width).powi(2) / self.width.powi(2))
+            / n;
     }
 }

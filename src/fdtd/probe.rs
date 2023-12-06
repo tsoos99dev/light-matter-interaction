@@ -19,7 +19,7 @@ impl EPoint {
 }
 
 impl Probe for EPoint {
-    fn measure(&mut self, grid: &Grid, t: usize) {
+    fn measure(&mut self, grid: &Grid, _t: usize) {
         self.data.push(grid.ez[self.location]);
     }
 }

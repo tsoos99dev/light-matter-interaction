@@ -19,6 +19,7 @@ impl LosslessDielectric {
 impl Material for LosslessDielectric {
     fn create(&self, grid: &mut Grid) {
         for i in self.extent.clone() {
+            grid.ceze[i] = 1.0;
             grid.cezh[i] = IMP0 / self.er;
         }
     }
