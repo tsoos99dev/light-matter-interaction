@@ -63,12 +63,14 @@ impl<'a, Left: state::Boundary, Right: state::Boundary> FDTDSim<'a, Left, Right>
             material.create(&mut grid);
         }
 
-        let mut left_boundary = match self.left_boundary_kind {
-            boundary::BoundaryKind::ABC => boundary::LeftABC::new(&grid),
+        let mut left_boundary: Box<dyn boundary::Boundary> = match self.left_boundary_kind {
+            boundary::BoundaryKind::ABC => Box::new(boundary::LeftABC::new(&grid)),
+            boundary::BoundaryKind::ABC2 => Box::new(boundary::LeftABC2::new(&grid)),
         };
 
-        let mut right_boundary = match self.right_boundary_kind {
-            boundary::BoundaryKind::ABC => boundary::RightABC::new(&grid),
+        let mut right_boundary: Box<dyn boundary::Boundary> = match self.right_boundary_kind {
+            boundary::BoundaryKind::ABC => Box::new(boundary::RightABC::new(&grid)),
+            boundary::BoundaryKind::ABC2 => Box::new(boundary::RightABC2::new(&grid)),
         };
 
         for t in 0..self.tstep {
@@ -104,8 +106,8 @@ impl<'a> FDTDSim<'a, state::NoBoundary, state::NoBoundary> {
             sources: vec![],
             materials: vec![],
             probes: vec![],
-            left_boundary_kind: boundary::BoundaryKind::ABC,
-            right_boundary_kind: boundary::BoundaryKind::ABC,
+            left_boundary_kind: boundary::BoundaryKind::ABC2,
+            right_boundary_kind: boundary::BoundaryKind::ABC2,
             _left: Default::default(),
             _right: Default::default(),
         }

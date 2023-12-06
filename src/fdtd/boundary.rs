@@ -6,6 +6,7 @@ pub trait Boundary {
 
 pub enum BoundaryKind {
     ABC,
+    ABC2,
 }
 
 pub struct LeftABC {
@@ -41,7 +42,7 @@ pub struct RightABC {
 
 impl RightABC {
     pub fn new(grid: &Grid) -> RightABC {
-        let size = 200;
+        let size = grid.ez.len();
         let cezh0 = grid.cezh[size - 1];
         let chye = grid.chye[size - 2];
         let temp = f64::sqrt(cezh0 * chye);
@@ -59,5 +60,91 @@ impl Boundary for RightABC {
 
         grid.ez[size - 1] = self.old_ez + self.coeff * (ezright - ez0);
         self.old_ez = ezright;
+    }
+}
+
+pub struct LeftABC2 {
+    old_ez1: [f64; 3],
+    old_ez2: [f64; 3],
+    coeff: [f64; 3],
+}
+
+impl LeftABC2 {
+    pub fn new(grid: &Grid) -> LeftABC2 {
+        let size = grid.ez.len();
+        let cezh0 = grid.cezh[size - 1];
+        let chye = grid.chye[size - 2];
+        let temp1 = f64::sqrt(cezh0 * chye);
+        let temp2 = 1.0 / temp1 + 2.0 + temp1;
+        let coeff = [
+            -(1.0 / temp1 - 2.0 + temp1) / temp2,
+            -2.0 * (temp1 - 1.0 / temp1) / temp2,
+            4.0 * (temp1 + 1.0 / temp1) / temp2,
+        ];
+
+        LeftABC2 {
+            old_ez1: [0.0; 3],
+            old_ez2: [0.0; 3],
+            coeff,
+        }
+    }
+}
+
+impl Boundary for LeftABC2 {
+    fn update(&mut self, grid: &mut Grid) {
+        let ezleft1 = grid.ez[1];
+        let ezleft2 = grid.ez[2];
+
+        grid.ez[0] = self.coeff[0] * (ezleft2 + self.old_ez2[0])
+            + self.coeff[1] * (self.old_ez1[0] + self.old_ez1[2] - ezleft1 - self.old_ez2[1])
+            + self.coeff[2] * self.old_ez1[1]
+            - self.old_ez2[2];
+
+        self.old_ez2 = self.old_ez1.clone();
+        self.old_ez1.clone_from_slice(&grid.ez[0..3]);
+    }
+}
+
+pub struct RightABC2 {
+    old_ez1: [f64; 3],
+    old_ez2: [f64; 3],
+    coeff: [f64; 3],
+}
+
+impl RightABC2 {
+    pub fn new(grid: &Grid) -> RightABC2 {
+        let size = grid.ez.len();
+        let cezh0 = grid.cezh[size - 1];
+        let chye = grid.chye[size - 2];
+        let temp1 = f64::sqrt(cezh0 * chye);
+        let temp2 = 1.0 / temp1 + 2.0 + temp1;
+        let coeff = [
+            -(1.0 / temp1 - 2.0 + temp1) / temp2,
+            -2.0 * (temp1 - 1.0 / temp1) / temp2,
+            4.0 * (temp1 + 1.0 / temp1) / temp2,
+        ];
+
+        RightABC2 {
+            old_ez1: [0.0; 3],
+            old_ez2: [0.0; 3],
+            coeff,
+        }
+    }
+}
+
+impl Boundary for RightABC2 {
+    fn update(&mut self, grid: &mut Grid) {
+        let size = grid.ez.len();
+        let ezright1 = grid.ez[size - 2];
+        let ezright2 = grid.ez[size - 3];
+
+        grid.ez[size - 1] = self.coeff[0] * (ezright2 + self.old_ez2[0])
+            + self.coeff[1] * (self.old_ez1[0] + self.old_ez1[2] - ezright1 - self.old_ez2[1])
+            + self.coeff[2] * self.old_ez1[1]
+            - self.old_ez2[2];
+
+        self.old_ez2 = self.old_ez1.clone();
+        self.old_ez1.clone_from_slice(&grid.ez[size - 3..size]);
+        self.old_ez1.reverse();
     }
 }
