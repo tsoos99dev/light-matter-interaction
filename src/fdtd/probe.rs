@@ -26,13 +26,15 @@ impl Probe for EPoint {
 
 pub struct EField {
     pub interval: usize,
+    pub spacing: usize,
     pub data: Vec<Vec<f64>>,
 }
 
 impl EField {
-    pub fn new(interval: usize) -> EField {
+    pub fn new(interval: usize, spacing: usize) -> EField {
         EField {
             interval,
+            spacing,
             data: vec![],
         }
     }
@@ -41,7 +43,8 @@ impl EField {
 impl Probe for EField {
     fn measure(&mut self, grid: &Grid, t: usize) {
         if t % self.interval == 0 {
-            self.data.push(grid.ez.clone());
+            self.data
+                .push(grid.ez.clone().into_iter().step_by(self.spacing).collect());
         }
     }
 }

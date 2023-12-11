@@ -1,7 +1,5 @@
 use std::{marker::PhantomData, vec};
 
-use boundary::Boundary;
-
 pub mod boundary;
 pub mod export;
 mod grid;
@@ -90,6 +88,10 @@ impl<'a, Left: state::Boundary, Right: state::Boundary> FDTDSim<'a, Left, Right>
             for i in 1..self.xstep - 1 {
                 grid.ez[i] =
                     grid.ceze[i] * grid.ez[i] + grid.cezh[i] * (grid.hy[i] - grid.hy[i - 1]);
+            }
+
+            for material in &mut self.materials {
+                material.update(&mut grid, t as f64);
             }
 
             left_boundary.update(&mut grid);
