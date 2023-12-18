@@ -1,8 +1,8 @@
 use super::{grid::Grid, IMP0};
-use std::ops::Range;
+use std::{f64::consts::PI, ops::Range};
 
 pub trait Material {
-    fn create(&self, grid: &mut Grid);
+    fn create(&mut self, grid: &mut Grid);
 
     fn update(&mut self, grid: &mut Grid, t: f64);
 }
@@ -19,7 +19,7 @@ impl LosslessDielectric {
 }
 
 impl Material for LosslessDielectric {
-    fn create(&self, grid: &mut Grid) {
+    fn create(&mut self, grid: &mut Grid) {
         for i in self.extent.clone() {
             grid.ceze[i] = 1.0;
             grid.cezh[i] = IMP0 / self.er;
@@ -42,7 +42,7 @@ impl LossyDielectric {
 }
 
 impl Material for LossyDielectric {
-    fn create(&self, grid: &mut Grid) {
+    fn create(&mut self, grid: &mut Grid) {
         for i in self.extent.clone() {
             grid.ceze[i] = (1.0 - self.loss) / (1.0 + self.loss);
             grid.cezh[i] = IMP0 / self.er / (1.0 + self.loss);
@@ -52,56 +52,81 @@ impl Material for LossyDielectric {
     fn update(&mut self, _grid: &mut Grid, _t: f64) {}
 }
 
-pub struct SimpleBoundDipole {
-    intrinsic_electric_field: f64,
-    location: usize,
-}
-
-impl SimpleBoundDipole {
-    pub fn new(intrinsic_electric_field: f64, location: usize) -> SimpleBoundDipole {
-        SimpleBoundDipole {
-            intrinsic_electric_field,
-            location,
-        }
-    }
-}
-
-impl Material for SimpleBoundDipole {
-    fn create(&self, _grid: &mut Grid) {}
-
-    fn update(&mut self, grid: &mut Grid, _t: f64) {
-        grid.ez[self.location] += -self.intrinsic_electric_field * grid.ez[self.location];
-    }
-}
-
-pub struct BoundDipoleArray {
-    intrinsic_electric_field: f64,
+pub struct Lorentz {
+    np: f64,
+    n0: f64,
+    nt: f64,
+    eps_inf: f64,
     extent: Range<usize>,
-    spacing: usize,
+    jp: Vec<f64>,
+    ji: Vec<f64>,
+    ezold: Vec<f64>,
+    cjj: f64,
+    cji: f64,
+    cje: f64,
 }
 
-impl BoundDipoleArray {
-    pub fn new(
-        intrinsic_electric_field: f64,
-        extent: Range<usize>,
-        spacing: usize,
-    ) -> BoundDipoleArray {
-        BoundDipoleArray {
-            intrinsic_electric_field,
+impl Lorentz {
+    pub fn new(np: f64, n0: f64, nt: f64, eps_inf: f64, extent: Range<usize>) -> Lorentz {
+        Lorentz {
+            np,
+            n0,
+            nt,
+            eps_inf,
             extent,
-            spacing,
+            jp: vec![],
+            ji: vec![],
+            ezold: vec![],
+            cji: 0.0,
+            cjj: 0.0,
+            cje: 0.0,
         }
     }
 }
 
-impl Material for BoundDipoleArray {
-    fn create(&self, _grid: &mut Grid) {}
+impl Material for Lorentz {
+    fn create(&mut self, grid: &mut Grid) {
+        self.jp.resize(self.extent.len(), 0.0);
+        self.ji.resize(self.extent.len(), 0.0);
+        self.ezold.resize(grid.ez.len(), 0.0);
+
+        self.cjj = (1.0 - 1.0 / self.nt) / (1.0 + 1.0 / self.nt);
+        self.cje = 2.0 * PI.powi(2) / (IMP0 * self.np.powi(2)) / (1.0 + 1.0 / self.nt);
+        self.cji = 2.0 * PI.powi(2) / self.n0.powi(2) / (1.0 + 1.0 / self.nt);
+
+        dbg!(self.cjj);
+        dbg!(self.cje);
+        dbg!(self.cji);
+
+        let temp = self.cje * IMP0 / (2.0 * self.eps_inf);
+        let ceze = (1.0 - temp) / (1.0 + temp);
+        let cezh = IMP0 / self.eps_inf / (1.0 + temp);
+
+        println!("{} {}", ceze, cezh);
+
+        for l in self.extent.clone() {
+            grid.ceze[l] = ceze;
+            grid.cezh[l] = cezh;
+        }
+    }
 
     fn update(&mut self, grid: &mut Grid, _t: f64) {
-        for location in self.extent.clone().step_by(self.spacing) {
-            grid.hy[location - 1] += -self.intrinsic_electric_field * grid.hy[location - 1] / IMP0;
-            grid.ez[location] += -self.intrinsic_electric_field * grid.ez[location];
-            grid.hy[location] += -self.intrinsic_electric_field * grid.hy[location] / IMP0;
+        let jitemp = self.ji.clone();
+
+        for (i, v) in &mut self.ji.iter_mut().enumerate() {
+            *v = *v + self.jp[i];
         }
+
+        for (i, l) in self.extent.clone().step_by(5).enumerate() {
+            grid.ez[l] -=
+                0.5 * (1.0 + self.cjj) * IMP0 / (1.0 + self.cje * IMP0 / 2.0) * self.jp[i];
+        }
+
+        for (i, l) in self.extent.clone().step_by(5).enumerate() {
+            self.jp[i] = self.cjj * self.jp[i] - self.cji * (self.ji[i] + jitemp[i])
+                + self.cje * (grid.ez[l] + self.ezold[l]);
+        }
+
+        self.ezold = grid.ez.clone();
     }
 }

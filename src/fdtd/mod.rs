@@ -1,5 +1,7 @@
 use std::{marker::PhantomData, vec};
 
+use self::grid::Grid;
+
 pub mod boundary;
 pub mod export;
 mod grid;
@@ -19,6 +21,7 @@ mod state {
 }
 
 pub struct FDTDSim<'a, Left: state::Boundary, Right: state::Boundary> {
+    grid: Grid,
     xstep: usize,
     tstep: usize,
     sources: Vec<Box<dyn source::Source + 'a>>,
@@ -48,61 +51,67 @@ impl<'a, Left: state::Boundary, Right: state::Boundary> FDTDSim<'a, Left, Right>
     }
 
     pub fn run(mut self) {
-        let mut grid = grid::Grid {
-            ez: vec![0.0; self.xstep],
-            hy: vec![0.0; self.xstep - 1],
-            ceze: vec![1.0; self.xstep],
-            cezh: vec![IMP0; self.xstep],
-            chyh: vec![1.0; self.xstep - 1],
-            chye: vec![1.0 / IMP0; self.xstep - 1],
-        };
-
-        for material in &self.materials {
-            material.create(&mut grid);
+        for material in &mut self.materials {
+            material.create(&mut self.grid);
         }
 
         let mut left_boundary: Box<dyn boundary::Boundary> = match self.left_boundary_kind {
-            boundary::BoundaryKind::ABC => Box::new(boundary::LeftABC::new(&grid)),
-            boundary::BoundaryKind::ABC2 => Box::new(boundary::LeftABC2::new(&grid)),
+            boundary::BoundaryKind::ABC => Box::new(boundary::LeftABC::new(&self.grid)),
+            boundary::BoundaryKind::ABC2 => Box::new(boundary::LeftABC2::new(&self.grid)),
         };
 
         let mut right_boundary: Box<dyn boundary::Boundary> = match self.right_boundary_kind {
-            boundary::BoundaryKind::ABC => Box::new(boundary::RightABC::new(&grid)),
-            boundary::BoundaryKind::ABC2 => Box::new(boundary::RightABC2::new(&grid)),
+            boundary::BoundaryKind::ABC => Box::new(boundary::RightABC::new(&self.grid)),
+            boundary::BoundaryKind::ABC2 => Box::new(boundary::RightABC2::new(&self.grid)),
         };
 
         for t in 0..self.tstep {
             for probe in &mut self.probes {
-                probe.measure(&grid, t);
+                probe.measure(&self.grid, t);
             }
 
             for i in 0..self.xstep - 1 {
-                grid.hy[i] =
-                    grid.chyh[i] * grid.hy[i] + grid.chye[i] * (grid.ez[i + 1] - grid.ez[i]);
+                self.grid.hy[i] = self.grid.chyh[i] * self.grid.hy[i]
+                    + self.grid.chye[i] * (self.grid.ez[i + 1] - self.grid.ez[i]);
             }
 
             for source in &self.sources {
-                source.evaluate(&mut grid, t as f64)
+                source.evaluate(&mut self.grid, t as f64)
             }
 
             for i in 1..self.xstep - 1 {
-                grid.ez[i] =
-                    grid.ceze[i] * grid.ez[i] + grid.cezh[i] * (grid.hy[i] - grid.hy[i - 1]);
+                self.grid.ez[i] = self.grid.ceze[i] * self.grid.ez[i]
+                    + self.grid.cezh[i] * (self.grid.hy[i] - self.grid.hy[i - 1]);
             }
 
             for material in &mut self.materials {
-                material.update(&mut grid, t as f64);
+                material.update(&mut self.grid, t as f64);
             }
 
-            left_boundary.update(&mut grid);
-            right_boundary.update(&mut grid);
+            left_boundary.update(&mut self.grid);
+            right_boundary.update(&mut self.grid);
         }
     }
 }
 
 impl<'a> FDTDSim<'a, state::NoBoundary, state::NoBoundary> {
-    pub fn new(xstep: usize, tstep: usize) -> FDTDSim<'a, state::NoBoundary, state::NoBoundary> {
+    pub fn new(
+        xstep: usize,
+        tstep: usize,
+        dx: f64,
+    ) -> FDTDSim<'a, state::NoBoundary, state::NoBoundary> {
+        let grid = grid::Grid {
+            dx,
+            ez: vec![0.0; xstep],
+            hy: vec![0.0; xstep - 1],
+            ceze: vec![1.0; xstep],
+            cezh: vec![IMP0; xstep],
+            chyh: vec![1.0; xstep - 1],
+            chye: vec![1.0 / IMP0; xstep - 1],
+        };
+
         FDTDSim {
+            grid,
             xstep,
             tstep,
             sources: vec![],
@@ -122,6 +131,7 @@ impl<'a, Right: state::Boundary> FDTDSim<'a, state::NoBoundary, Right> {
         kind: boundary::BoundaryKind,
     ) -> FDTDSim<'a, state::WithBoudary, Right> {
         FDTDSim {
+            grid: self.grid,
             xstep: self.xstep,
             tstep: self.tstep,
             sources: self.sources,
@@ -141,6 +151,7 @@ impl<'a, Left: state::Boundary> FDTDSim<'a, Left, state::NoBoundary> {
         kind: boundary::BoundaryKind,
     ) -> FDTDSim<'a, Left, state::WithBoudary> {
         FDTDSim {
+            grid: self.grid,
             xstep: self.xstep,
             tstep: self.tstep,
             sources: self.sources,

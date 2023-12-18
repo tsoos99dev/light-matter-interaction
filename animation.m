@@ -22,7 +22,8 @@ a1 = animatedline('Color',"#FF5714", "LineWidth", 2);
 axis([0 L -1.5 1.5])
 
 hold on;
-xline(100, 'LineWidth', 2);
+xline(1000, 'LineWidth', 2);
+fill([1000 L L 1000], [-2 -2 2 2], [0 0 0], 'FaceAlpha', 0.05)
 
 for k = 1:T
     yk = data(k, :);
@@ -32,3 +33,14 @@ for k = 1:T
     pause(0.03);
 end
 drawnow
+
+% vidObj = VideoWriter('sim','MPEG-4');
+% open(vidObj);
+% for k = 1:T
+%     yk = data(k, :);
+%     clearpoints(a1);
+%     addpoints(a1, X, yk);
+%     img = getframe(gcf);
+%     writeVideo(vidObj,img.cdata)
+% end
+% close(vidObj)
