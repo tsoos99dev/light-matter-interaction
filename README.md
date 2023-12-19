@@ -20,7 +20,7 @@ It's all single threaded right now, but it should take too long to run with reas
 
 ## Configuration
 
-The capabilities of the simulation currently include the following:
+A new script can be created based on the example in main.rs. There's no CLI interface available for the time being. The capabilities of the simulation currently include the following:
 
 **Sources:**
 
