@@ -16,7 +16,7 @@ Once the prerequisites have been installed
 cargo build --release
 ```
 
-It's all single threaded right now, but it should take too long to run with reasonable parameters. This creates a csv output of sampled field values.
+It's all single threaded right now, but it shouldn't take too long to run with reasonable parameters. This creates a csv output of sampled field values.
 
 ## Configuration
 
