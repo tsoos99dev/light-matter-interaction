@@ -35,11 +35,11 @@ All sources are implemented using the TSFS method, so they can only move to the 
 - Lossy dielectric (finite conductivity)
 - Lorentz
 
-## Boundaries
+**Boundaries**
 
 There is only a simple first and second order differential equation based boundary available.
 
-## Probes
+**Probes**
 
 Measurements can be made by defining probes. The following probes are available:
 
